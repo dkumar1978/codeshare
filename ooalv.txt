@@ -1,0 +1,130 @@
+http://help.sap.com/saphelp_nw04/helpdata/en/5e/88d440e14f8431e10000000a1550b0/frameset.htm
+
+
+
+
+FORM f_alv TABLES t_git_fintb.
+
+  DATA: lit_fintb TYPE TABLE OF ty_fintb.
+  DATA: lw_fintb TYPE ty_fintb.
+  DATA: lv_mat_lines TYPE i.
+  DATA: lv_wer_lines TYPE i.
+
+*--- ALV data declaration
+  DATA: gr_columns TYPE REF TO cl_salv_columns_table.
+*  DATA: gr_column TYPE REF TO cl_salv_column_table.
+  DATA: gr_table TYPE REF TO cl_salv_table.
+  DATA: gr_functions TYPE REF TO cl_salv_functions_list.
+* DATA: gr_sorts TYPE REF TO cl_salv_sorts.
+* DATA: gr_agg TYPE REF TO cl_salv_aggregations.
+  DATA: gr_display TYPE REF TO cl_salv_display_settings.
+  DATA: gr_events   TYPE REF TO lcl_handle_events.
+  DATA: gr_layout  TYPE REF TO cl_salv_layout.
+  DATA: gs_key     TYPE salv_s_layout_key.
+
+  DATA: lr_grid TYPE REF TO cl_salv_form_layout_grid,
+*        lr_flow TYPE REF TO cl_salv_form_layout_flow,
+        lr_label TYPE REF TO cl_salv_form_label,
+        lr_text TYPE REF TO cl_salv_form_text,
+        lv_errs TYPE string.
+  DATA: lr_events TYPE REF TO cl_salv_events_table.
+
+
+  lit_fintb[] = t_git_fintb[].
+
+*--- Set ALV Header
+  CREATE OBJECT lr_grid.
+
+*  lr_grid->create_header_information(                       " header
+*  row = 1 column = 1 text = text-h01
+*  tooltip = text-h01 ).
+
+
+  lv_mat_lines = LINES( git_matnr ).
+  lr_label = lr_grid->create_label(                         " 2,1
+  text = text-t03 row = 1 column = 1 ).
+  IF lv_mat_lines = 1.
+    lr_text = lr_grid->create_text(                         " 2,2
+    text = so_matnr-low row = 1 column = 2 ).
+  ELSE.
+    lr_text = lr_grid->create_text(                         " 2,2
+    text = text-t04 row = 1 column = 2 ).
+  ENDIF.
+
+  lv_wer_lines = LINES( git_werks ).
+  lr_label = lr_grid->create_label(                         " 2,1
+  text = text-t05 row = 2 column = 1 ).
+  IF lv_wer_lines = 1.
+    lr_text = lr_grid->create_text(                         " 2,2
+    text = so_werks-low row = 2 column = 2 ).
+  ELSE.
+    lr_text = lr_grid->create_text(                         " 2,2
+    text = text-t04 row = 2 column = 2 ).
+  ENDIF.
+
+  lr_label = lr_grid->create_label(                         " 3,1
+  text = text-t06 row = 3 column = 1 ).
+
+  lr_text = lr_grid->create_text(                           " 3,2
+  text = so_aennr-low row = 3 column = 2 ).
+
+  lr_label = lr_grid->create_label(                         " 3,1
+  text = text-t01 row = 4 column = 1 ).
+
+  lr_text = lr_grid->create_text(                           " 3,2
+  text = p_datuv row = 4 column = 2 ).
+
+  lr_label = lr_grid->create_label(                         " 4,1
+  text = text-t02 row = 5 column = 1 ).
+
+  lr_text = lr_grid->create_text(                           " 3,2
+  text = p_datub row = 5 column = 2 ).
+
+
+  TRY.
+      CALL METHOD cl_salv_table=>factory
+        IMPORTING
+          r_salv_table = gr_table
+        CHANGING
+          t_table      = lit_fintb.
+
+      lr_label->set_label_for( lr_text ).
+      gr_table->set_top_of_list( lr_grid ).
+      gr_functions = gr_table->get_functions( ).
+      gr_functions->set_all( abap_true ).
+      gr_display = gr_table->get_display_settings( ).
+      gr_display->set_striped_pattern( cl_salv_display_settings=>true ).
+    CATCH cx_salv_msg.
+  ENDTRY.
+
+*--- optimize the column widths
+  TRY.
+      gr_columns = gr_table->get_columns( ).
+      gr_columns->set_optimize(  ).
+    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
+  ENDTRY.
+*--- Set columns headers
+*  TRY.
+*      gr_columns = gr_table->get_columns( ).
+*      gr_column ?= gr_columns->get_column( 'IDNRK' ).
+*      gr_column->set_long_text( 'Component No.' ).
+*      gr_column->set_medium_text( 'Compont No' ).
+*      gr_column->set_short_text( 'Comp No' ).
+*    CATCH cx_salv_not_found.
+*  ENDTRY.
+
+*--- set layout
+  gs_key-report = sy-repid.
+  gr_layout  = gr_table->get_layout( ). "layouts
+  gr_layout->set_key( gs_key ).         "Pass Program Name
+  gr_layout->set_default( abap_true ).  "enable default setting
+  gr_layout->set_save_restriction( cl_salv_layout=>restrict_none ).
+
+*--- register events
+  lr_events = gr_table->get_event( ).
+  CREATE OBJECT gr_events.
+  SET HANDLER gr_events->on_double_click FOR lr_events.
+
+  gr_table->display( ).
+
+ENDFORM.                     " F_REPORT
